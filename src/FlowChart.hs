@@ -13,7 +13,7 @@ data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show)
 data Diagram
   = FlowChart
       { orientation :: Orientation,
-        graph :: [Graph (Style, Maybe String) [(String, Maybe (Bracket, String))]]
+        graph :: [Graph (Style, Maybe Text) [(Text, Maybe (Bracket, Text))]]
       }
   | Others
   deriving (Eq, Show)
@@ -50,7 +50,7 @@ pOrientation =
       LR <$ string "LR"
     ]
 
-pLink :: Parser (Style, Maybe String)
+pLink :: Parser (Style, Maybe Text)
 pLink =
   choice
     [ do
@@ -61,12 +61,12 @@ pLink =
         pure ("---", Nothing),
       do
         void $ lexeme "--"
-        content <- lexeme (M.some alphaNumChar)
+        content <- lexeme (fromString <$> M.some alphaNumChar)
         void $ lexeme "---"
         pure ("-- ---", Just content),
       do
         void $ lexeme "=="
-        content <- lexeme (M.some alphaNumChar)
+        content <- lexeme (fromString <$> M.some alphaNumChar)
         void $ lexeme "==>"
         pure ("== ==>", Just content)
     ]
@@ -74,17 +74,17 @@ pLink =
 pMultiNode :: Parser Text
 pMultiNode = string "&"
 
-pBracket :: Parser (Bracket, String)
+pBracket :: Parser (Bracket, Text)
 pBracket =
   choice
     [ do
-        content <- someBracket "{" "}" (M.some alphaNumChar)
+        content <- someBracket "{" "}" (fromString <$> M.some alphaNumChar)
         pure (Arrow, content),
       do
-        content <- someBracket "(" ")" (M.some alphaNumChar)
+        content <- someBracket "(" ")" (fromString <$> M.some alphaNumChar)
         pure (Paren, content),
       do
-        content <- someBracket "[" "]" (M.some alphaNumChar)
+        content <- someBracket "[" "]" (fromString <$> M.some alphaNumChar)
         pure (Square, content)
     ]
 
@@ -107,10 +107,10 @@ pDiagram = L.nonIndented sc (L.indentBlock sc p)
           return (L.IndentSome Nothing (return . (\a -> FlowChart {orientation = orientation, graph = concat a})) pGraph)
         Others' -> return (L.IndentNone Others)
 
-pVertex :: Parser String
-pVertex = lexeme (M.some alphaNumChar) <?> "vertex"
+pVertex :: Parser Text
+pVertex = lexeme (fromString <$> M.some alphaNumChar) <?> "vertex"
 
-pGraph :: Parser [Graph (Style, Maybe String) [(String, Maybe (Bracket, String))]]
+pGraph :: Parser [Graph (Style, Maybe Text) [(Text, Maybe (Bracket, Text))]]
 pGraph = do
   vertexL <- pVertex
   maybeBracketContentL <- optional pBracket
@@ -119,7 +119,7 @@ pGraph = do
   maybeBracketContentR <- optional pBracket
   pGraphRecursive [edge link [(vertexL, maybeBracketContentL)] [(vertexR, maybeBracketContentR)]]
 
-pGraphRecursive :: [Graph (Style, Maybe String) [(String, Maybe (Bracket, String))]] -> Parser [Graph (Style, Maybe String) [(String, Maybe (Bracket, String))]]
+pGraphRecursive :: [Graph (Style, Maybe Text) [(Text, Maybe (Bracket, Text))]] -> Parser [Graph (Style, Maybe Text) [(Text, Maybe (Bracket, Text))]]
 pGraphRecursive z@((Connect x y (Vertex a)) : xs) = do
   link <- optional $ lexeme pLink
   case link of
