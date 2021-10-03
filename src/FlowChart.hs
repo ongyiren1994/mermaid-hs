@@ -13,7 +13,7 @@ data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show)
 data Diagram
   = FlowChart
       { orientation :: Orientation,
-        graph :: [[Graph (Style, Maybe String) (String, Maybe (Bracket, String))]]
+        graph :: [Graph (Style, Maybe String) (String, Maybe (Bracket, String))]
       }
   | Others
   deriving (Eq, Show)
@@ -101,7 +101,7 @@ pDiagram = L.nonIndented sc (L.indentBlock sc p)
         FlowChart' -> do
           void $ lexeme " "
           orientation <- pOrientation
-          return (L.IndentSome Nothing (return . (\a -> FlowChart {orientation = orientation, graph = a})) pGraph)
+          return (L.IndentSome Nothing (return . (\a -> FlowChart {orientation = orientation, graph = concat a})) pGraph)
         Others' -> return (L.IndentNone Others)
 
 pVertex :: Parser String
