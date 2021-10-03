@@ -120,7 +120,7 @@ pGraph = do
   pGraphRecursive [edge link [(vertexL, maybeBracketContentL)] [(vertexR, maybeBracketContentR)]]
 
 pGraphRecursive :: [Graph (Style, Maybe String) [(String, Maybe (Bracket, String))]] -> Parser [Graph (Style, Maybe String) [(String, Maybe (Bracket, String))]]
-pGraphRecursive graph = do
+pGraphRecursive (z@(Connect x y (Vertex a)) : xs) = do
   link <- optional $ lexeme pLink
   case link of
     Nothing -> do
@@ -129,14 +129,10 @@ pGraphRecursive graph = do
         Just _ -> do
           vertexR <- pVertex
           maybeBracketContentR <- optional pBracket
-          case graph of
-            (Connect x y (Vertex b)) : xs -> do
-              pGraphRecursive $ Connect x y (Vertex ((++) b [(vertexR, maybeBracketContentR)])) : xs
-            _ -> return []
-        Nothing -> return graph
+          pGraphRecursive $ Connect x y (Vertex ((++) a [(vertexR, maybeBracketContentR)])) : xs
+        Nothing -> return (z : xs)
     Just link' -> do
       vertexR <- pVertex
       maybeBracketContentR <- optional pBracket
-      case graph of
-        (Connect _ _ (Vertex a)) : _ -> pGraphRecursive $ edge link' a [(vertexR, maybeBracketContentR)] : graph
-        _ -> return []
+      pGraphRecursive $ edge link' a [(vertexR, maybeBracketContentR)] : (z : xs)
+pGraphRecursive _ = return []
