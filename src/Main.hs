@@ -20,5 +20,5 @@ main = do
   withUtf8 $ do
     let opts = info (opt <**> helper) (fullDesc <> progDesc "Parse mermaid syntax inside a file")
     file <- execParser opts
-    content <- readFile file
-    parseTest (pDiagram <* eof) (fromString content)
+    content <- readFileText file
+    parseTest (pDiagram <* eof) content
