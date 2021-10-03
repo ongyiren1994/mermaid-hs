@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
+module FlowChart where
 import Algebra.Graph.Labelled as LG
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec as M
