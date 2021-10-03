@@ -123,13 +123,10 @@ pGraph :: Parser [Graph (LinkStyle, Maybe LinkText) [(NodeId, Maybe (Bracket, No
 pGraph = do
   vertexL <- pVertex
   maybeBracketContentL <- optional pBracket
-  link <- lexeme pLink
-  vertexR <- pVertex
-  maybeBracketContentR <- optional pBracket
-  pGraphRecursive [edge link [(vertexL, maybeBracketContentL)] [(vertexR, maybeBracketContentR)]]
+  pGraphRecursive [vertex [(vertexL, maybeBracketContentL)]]
 
 pGraphRecursive :: [Graph (LinkStyle, Maybe LinkText) [(NodeId, Maybe (Bracket, NodeName))]] -> Parser [Graph (LinkStyle, Maybe LinkText) [(NodeId, Maybe (Bracket, NodeName))]]
-pGraphRecursive z@((Connect x y (Vertex a)) : xs) = do
+pGraphRecursive graphs = do
   link <- optional $ lexeme pLink
   case link of
     Nothing -> do
@@ -138,10 +135,15 @@ pGraphRecursive z@((Connect x y (Vertex a)) : xs) = do
         Just _ -> do
           vertexR <- pVertex
           maybeBracketContentR <- optional pBracket
-          pGraphRecursive $ Connect x y (Vertex ((++) a [(vertexR, maybeBracketContentR)])) : xs
-        Nothing -> return z
+          case graphs of
+            [Vertex a] -> pGraphRecursive [Vertex ((++) a [(vertexR, maybeBracketContentR)])]
+            (Connect x y (Vertex a)) : xs -> pGraphRecursive $ Connect x y (Vertex ((++) a [(vertexR, maybeBracketContentR)])) : xs
+            _ -> return graphs
+        Nothing -> return graphs
     Just link' -> do
       vertexR <- pVertex
       maybeBracketContentR <- optional pBracket
-      pGraphRecursive $ edge link' a [(vertexR, maybeBracketContentR)] : z
-pGraphRecursive _ = return []
+      case graphs of
+        [Vertex a] -> pGraphRecursive [edge link' a [(vertexR, maybeBracketContentR)]]
+        z@((Connect _ _ (Vertex a)) : _) -> pGraphRecursive $ edge link' a [(vertexR, maybeBracketContentR)] : z
+        _ -> return graphs
