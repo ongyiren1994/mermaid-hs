@@ -5,6 +5,7 @@ module Main where
 import FlowChart
 import Main.Utf8 (withUtf8)
 import Options.Applicative as O
+import qualified Shower
 import Text.Megaparsec
 
 opt :: O.Parser FilePath
@@ -21,4 +22,5 @@ main = do
     let opts = info (opt <**> helper) (fullDesc <> progDesc "Parse mermaid syntax inside a file")
     file <- execParser opts
     content <- readFileText file
-    parseTest (pDiagram <* eof) content
+    let res = parse (pDiagram <* eof) file content
+    Shower.printer res
