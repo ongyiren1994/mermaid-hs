@@ -4,6 +4,7 @@ module FlowChart where
 
 import Algebra.Graph.Labelled as LG
 import Relude.Extra.Foldable1
+import System.Directory.Internal.Prelude ()
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec as M
 import Text.Megaparsec.Char (alphaNumChar, space1, string)
@@ -16,18 +17,30 @@ data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show)
 data Diagram
   = FlowChart
       { orientation :: Orientation,
-        graph :: Graph (LinkStyle, Maybe LinkText) [(NodeId, Maybe (Bracket, NodeName))]
+        graph :: FlowChartGraph
       }
   | Others
   deriving (Eq, Show)
 
-type LinkStyle = Text
+type FlowChartGraph = Graph Edge [Node]
 
-type LinkText = Text
+data Edge = Edge
+  { edgeStyle :: Text,
+    edgeLabel :: Maybe Text
+  }
+  deriving (Eq, Show)
 
-type NodeId = Text
+instance Semigroup Edge where
+  (<>) (Edge a b) (Edge c d) = (Edge (a <> c) (b <> d))
 
-type NodeName = Text
+instance Monoid Edge where
+  mempty = Edge "" Nothing
+
+data Node = Node
+  { nodeId :: Text,
+    nodeLabel :: Maybe (Bracket, Text)
+  }
+  deriving (Eq, Show, Ord)
 
 data DiagramType = FlowChart' | Others' deriving (Eq, Show)
 
@@ -59,25 +72,25 @@ pOrientation =
       LR <$ string "LR"
     ]
 
-pLink :: Parser (LinkStyle, Maybe LinkText)
+pLink :: Parser Edge
 pLink =
   choice
     [ do
         void $ string "-->"
-        pure ("-->", Nothing),
+        pure $ Edge "-->" Nothing,
       do
         void $ string "---"
-        pure ("---", Nothing),
+        pure $ Edge "---" Nothing,
       do
         void $ lexeme "--"
         content <- lexeme (fromString <$> M.some alphaNumChar)
         void $ lexeme "---"
-        pure ("-- ---", Just content),
+        pure $ Edge "-- ---" $ Just content,
       do
         void $ lexeme "=="
         content <- lexeme (fromString <$> M.some alphaNumChar)
         void $ lexeme "==>"
-        pure ("== ==>", Just content)
+        pure $ Edge "== ==>" $ Just content
     ]
 
 pMultiNode :: Parser Text
@@ -119,13 +132,13 @@ pDiagram = L.nonIndented sc (L.indentBlock sc p)
 pVertex :: Parser Text
 pVertex = lexeme (fromString <$> M.some alphaNumChar) <?> "vertex"
 
-pGraph :: Parser [Graph (LinkStyle, Maybe LinkText) [(NodeId, Maybe (Bracket, NodeName))]]
+pGraph :: Parser [FlowChartGraph]
 pGraph = do
   vertexL <- pVertex
   maybeBracketContentL <- optional pBracket
-  pGraphRecursive [vertex [(vertexL, maybeBracketContentL)]]
+  pGraphRecursive [vertex [Node vertexL maybeBracketContentL]]
 
-pGraphRecursive :: [Graph (LinkStyle, Maybe LinkText) [(NodeId, Maybe (Bracket, NodeName))]] -> Parser [Graph (LinkStyle, Maybe LinkText) [(NodeId, Maybe (Bracket, NodeName))]]
+pGraphRecursive :: [FlowChartGraph] -> Parser [FlowChartGraph]
 pGraphRecursive graphs = do
   link <- optional $ lexeme pLink
   case link of
@@ -136,14 +149,14 @@ pGraphRecursive graphs = do
           vertexR <- pVertex
           maybeBracketContentR <- optional pBracket
           case graphs of
-            [Vertex a] -> pGraphRecursive [Vertex ((++) a [(vertexR, maybeBracketContentR)])]
-            (Connect x y (Vertex a)) : xs -> pGraphRecursive $ Connect x y (Vertex ((++) a [(vertexR, maybeBracketContentR)])) : xs
+            [Vertex a] -> pGraphRecursive [Vertex ((++) a [Node vertexR maybeBracketContentR])]
+            (Connect x y (Vertex a)) : xs -> pGraphRecursive $ Connect x y (Vertex ((++) a [Node vertexR maybeBracketContentR])) : xs
             _ -> return graphs
         Nothing -> return graphs
     Just link' -> do
       vertexR <- pVertex
       maybeBracketContentR <- optional pBracket
       case graphs of
-        [Vertex a] -> pGraphRecursive [edge link' a [(vertexR, maybeBracketContentR)]]
-        z@((Connect _ _ (Vertex a)) : _) -> pGraphRecursive $ edge link' a [(vertexR, maybeBracketContentR)] : z
+        [Vertex a] -> pGraphRecursive [edge link' a [Node vertexR maybeBracketContentR]]
+        z@((Connect _ _ (Vertex a)) : _) -> pGraphRecursive $ edge link' a [Node vertexR maybeBracketContentR] : z
         _ -> return graphs
