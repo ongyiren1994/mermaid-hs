@@ -13,7 +13,7 @@ data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show)
 data Diagram
   = FlowChart
       { orientation :: Orientation,
-        graph :: [Graph (Style, Maybe String) (String, Maybe (Bracket, String))]
+        graph :: [[Graph (Style, Maybe String) (String, Maybe (Bracket, String))]]
       }
   | Others
   deriving (Eq, Show)
@@ -101,17 +101,29 @@ pDiagram = L.nonIndented sc (L.indentBlock sc p)
         FlowChart' -> do
           void $ lexeme " "
           orientation <- pOrientation
-          return (L.IndentSome Nothing (return . (\x -> FlowChart {orientation = orientation, graph = x})) pGraph)
+          return (L.IndentSome Nothing (return . (\a -> FlowChart {orientation = orientation, graph = a})) pGraph)
         Others' -> return (L.IndentNone Others)
 
 pVertex :: Parser String
 pVertex = lexeme (M.some alphaNumChar) <?> "vertex"
 
-pGraph :: Parser (Graph (Style, Maybe String) (String, Maybe (Bracket, String)))
+pGraph :: Parser [Graph (Style, Maybe String) (String, Maybe (Bracket, String))]
 pGraph = do
   vertexL <- pVertex
   maybeBracketContentL <- optional pBracket
   link <- lexeme pLink
   vertexR <- pVertex
   maybeBracketContentR <- optional pBracket
-  return (edge link (vertexL, maybeBracketContentL) (vertexR, maybeBracketContentR))
+  pGraphRecursive [edge link (vertexL, maybeBracketContentL) (vertexR, maybeBracketContentR)]
+
+pGraphRecursive :: [Graph (Style, Maybe String) (String, Maybe (Bracket, String))] -> Parser [Graph (Style, Maybe String) (String, Maybe (Bracket, String))]
+pGraphRecursive graph = do
+  link <- optional $ lexeme pLink
+  case link of
+    Nothing -> return graph
+    Just link' -> do
+      vertexR <- pVertex
+      maybeBracketContentR <- optional pBracket
+      case graph of
+        (Connect _ _ (Vertex a)) : _ -> pGraphRecursive $ edge link' a (vertexR, maybeBracketContentR) : graph
+        _ -> return []
