@@ -13,7 +13,7 @@ data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show)
 data Diagram
   = FlowChart
       { orientation :: Orientation,
-        graph :: [Graph (Style, Maybe String) (String, Maybe (Bracket, String))]
+        graph :: [Graph (Style, Maybe String) [(String, Maybe (Bracket, String))]]
       }
   | Others
   deriving (Eq, Show)
@@ -71,6 +71,9 @@ pLink =
         pure ("== ==>", Just content)
     ]
 
+pMultiNode :: Parser Text
+pMultiNode = string "&"
+
 pBracket :: Parser (Bracket, String)
 pBracket =
   choice
@@ -107,23 +110,33 @@ pDiagram = L.nonIndented sc (L.indentBlock sc p)
 pVertex :: Parser String
 pVertex = lexeme (M.some alphaNumChar) <?> "vertex"
 
-pGraph :: Parser [Graph (Style, Maybe String) (String, Maybe (Bracket, String))]
+pGraph :: Parser [Graph (Style, Maybe String) [(String, Maybe (Bracket, String))]]
 pGraph = do
   vertexL <- pVertex
   maybeBracketContentL <- optional pBracket
   link <- lexeme pLink
   vertexR <- pVertex
   maybeBracketContentR <- optional pBracket
-  pGraphRecursive [edge link (vertexL, maybeBracketContentL) (vertexR, maybeBracketContentR)]
+  pGraphRecursive [edge link [(vertexL, maybeBracketContentL)] [(vertexR, maybeBracketContentR)]]
 
-pGraphRecursive :: [Graph (Style, Maybe String) (String, Maybe (Bracket, String))] -> Parser [Graph (Style, Maybe String) (String, Maybe (Bracket, String))]
+pGraphRecursive :: [Graph (Style, Maybe String) [(String, Maybe (Bracket, String))]] -> Parser [Graph (Style, Maybe String) [(String, Maybe (Bracket, String))]]
 pGraphRecursive graph = do
   link <- optional $ lexeme pLink
   case link of
-    Nothing -> return graph
+    Nothing -> do
+      branch <- optional $ lexeme pMultiNode
+      case branch of
+        Just _ -> do
+          vertexR <- pVertex
+          maybeBracketContentR <- optional pBracket
+          case graph of
+            (Connect x y (Vertex b)) : xs -> do
+              pGraphRecursive $ Connect x y (Vertex ((++) b [(vertexR, maybeBracketContentR)])) : xs
+            _ -> return []
+        Nothing -> return graph
     Just link' -> do
       vertexR <- pVertex
       maybeBracketContentR <- optional pBracket
       case graph of
-        (Connect _ _ (Vertex a)) : _ -> pGraphRecursive $ edge link' a (vertexR, maybeBracketContentR) : graph
+        (Connect _ _ (Vertex a)) : _ -> pGraphRecursive $ edge link' a [(vertexR, maybeBracketContentR)] : graph
         _ -> return []
