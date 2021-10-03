@@ -44,6 +44,7 @@ executable haskell-template
     , time
     , unliftio
     , with-utf8
+    , algebraic-graphs
 
   mixins:
     base hiding (Prelude),
