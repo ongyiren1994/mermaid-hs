@@ -1,7 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module FlowChart where
+
 import Algebra.Graph.Labelled as LG
+import Relude.Extra.Foldable1
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec as M
 import Text.Megaparsec.Char (alphaNumChar, space1, string)
@@ -14,7 +16,7 @@ data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show)
 data Diagram
   = FlowChart
       { orientation :: Orientation,
-        graph :: [Graph (LinkStyle, Maybe LinkText) [(NodeId, Maybe (Bracket, NodeName))]]
+        graph :: Graph (LinkStyle, Maybe LinkText) [(NodeId, Maybe (Bracket, NodeName))]
       }
   | Others
   deriving (Eq, Show)
@@ -111,7 +113,7 @@ pDiagram = L.nonIndented sc (L.indentBlock sc p)
         FlowChart' -> do
           void $ lexeme " "
           orientation <- pOrientation
-          return (L.IndentSome Nothing (return . (\a -> FlowChart {orientation = orientation, graph = concat a})) pGraph)
+          return (L.IndentSome Nothing (return . (\a -> FlowChart {orientation = orientation, graph = foldl1' overlay (fromList (concat a))})) pGraph)
         Others' -> return (L.IndentNone Others)
 
 pVertex :: Parser Text
