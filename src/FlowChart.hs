@@ -5,7 +5,7 @@ import Relude.Extra.Foldable1
 import System.Directory.Internal.Prelude ()
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec as M
-import Text.Megaparsec.Char (alphaNumChar, space1, string)
+import Text.Megaparsec.Char (alphaNumChar, char, space1, string)
 import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = Parsec Void Text
@@ -40,7 +40,7 @@ data Node = Node
   }
   deriving (Eq, Show, Ord)
 
-data Bracket = Square | Arrow | Paren deriving (Eq, Show, Ord)
+data Bracket = Default | Rhombus | Round | Stadium | Subroutine | Cylindrical | Circle | Asymmetric | Hexagon | Parallelogram | ParallelogramAlt | Trapezoid | TrapezoidAlt deriving (Eq, Show, Ord)
 
 data DiagramType = FlowChart' | Others' deriving (Eq, Show)
 
@@ -48,7 +48,7 @@ sc :: Parser ()
 sc =
   L.space
     space1
-    M.empty
+    (L.skipLineComment "//")
     M.empty
 
 lexeme :: Parser a -> Parser a
@@ -78,41 +78,125 @@ pOrientation =
     ]
 
 pVertex :: Parser Text
-pVertex = lexeme (fromString <$> M.some alphaNumChar) <?> "vertex"
+pVertex = lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!')) <?> "vertex"
 
 pBracket :: Parser (Bracket, Text)
 pBracket =
   choice
     [ do
-        content <- someBracket "{" "}" (fromString <$> M.some alphaNumChar)
-        pure (Arrow, content),
+        content <- someBracket "([" "])" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        pure (Stadium, content),
       do
-        content <- someBracket "(" ")" (fromString <$> M.some alphaNumChar)
-        pure (Paren, content),
+        content <- someBracket "[[" "]]" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        pure (Subroutine, content),
       do
-        content <- someBracket "[" "]" (fromString <$> M.some alphaNumChar)
-        pure (Square, content)
+        content <- someBracket "((" "))" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        pure (Cylindrical, content),
+      do
+        content <- someBracket "[(" ")]" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        pure (Circle, content),
+      do
+        content <- someBracket ">" "]" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        pure (Asymmetric, content),
+      do
+        content <- someBracket "{{" "}}" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        pure (Hexagon, content),
+      do
+        void $ lexeme $ "[/"
+        content <- fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!')
+        closeBracketA <- optional $ lexeme $ "/]"
+        case closeBracketA of
+          Just _ -> pure (Parallelogram, content)
+          Nothing -> do
+            void $ lexeme "\\]"
+            pure (Trapezoid, content),
+      do
+        void $ lexeme $ "[\\"
+        content <- fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!')
+        closeBracketA <- optional $ lexeme $ "\\]"
+        case closeBracketA of
+          Just _ -> pure (ParallelogramAlt, content)
+          Nothing -> do
+            void $ lexeme "/]"
+            pure (TrapezoidAlt, content),
+      do
+        content <- someBracket "{" "}" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        pure (Rhombus, content),
+      do
+        content <- someBracket "(" ")" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        pure (Round, content),
+      do
+        content <- someBracket "[" "]" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        pure (Default, content)
     ]
 
 pLink :: Parser Edge
 pLink =
   choice
     [ do
-        void $ string "-->"
-        pure $ Edge "-->" Nothing,
+        void $ lexeme $ string "-->"
+        content <- optional $ do
+          void $ lexeme "|"
+          lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        case content of
+          Just x -> do
+            void $ choice [string "| ", string "|"]
+            pure $ Edge "--> ||" (Just x)
+          Nothing -> pure $ Edge "-->" Nothing,
       do
-        void $ string "---"
-        pure $ Edge "---" Nothing,
+        void $ lexeme $ string "---"
+        content <- optional $ do
+          void $ lexeme "|"
+          lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        case content of
+          Just x -> do
+            void $ choice [string "| ", string "|"]
+            pure $ Edge "--- ||" (Just x)
+          Nothing -> pure $ Edge "---" Nothing,
+      do
+        void $ lexeme "--o"
+        pure $ Edge "--o" Nothing,
+      do
+        void $ lexeme "--x"
+        pure $ Edge "--x" Nothing,
       do
         void $ lexeme "--"
-        content <- lexeme (fromString <$> M.some alphaNumChar)
-        void $ lexeme "---"
-        pure $ Edge "-- ---" $ Just content,
+        content <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        void $ string "--"
+        extraDash <- optional $ lexeme $ string "-"
+        case extraDash of
+          Just _ -> do
+            pure $ Edge "-- ---" $ Just content
+          Nothing -> do
+            void $ lexeme $ string ">"
+            pure $ Edge "-- --" $ Just content,
+      do
+        void $ lexeme "==>"
+        pure $ Edge "==>" Nothing,
       do
         void $ lexeme "=="
-        content <- lexeme (fromString <$> M.some alphaNumChar)
+        content <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
         void $ lexeme "==>"
-        pure $ Edge "== ==>" $ Just content
+        pure $ Edge "== ==>" $ Just content,
+      do
+        void $ lexeme "o--o"
+        pure $ Edge "o--o" Nothing,
+      do
+        void $ lexeme "x--x"
+        pure $ Edge "x--x" Nothing,
+      do
+        void $ lexeme "<-->"
+        pure $ Edge "<-->" Nothing,
+      do
+        void $ lexeme "-."
+        content <- optional $ lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        case content of
+          Just _ -> do
+            void $ lexeme ".->"
+            pure $ Edge "-.->" content
+          Nothing -> do
+            void $ lexeme "->"
+            pure $ Edge "-.->" content
     ]
 
 pMultiNode :: Parser Text
