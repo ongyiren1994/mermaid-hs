@@ -3,7 +3,6 @@
 module FlowChart where
 
 import Algebra.Graph.Labelled as LG
-import Relude.Extra.Foldable1
 import System.Directory.Internal.Prelude ()
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec as M
@@ -22,7 +21,7 @@ data Diagram
 
 data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show)
 
-type FlowChartGraph = Graph (Maybe Edge) [Node]
+type FlowChartGraph = Graph (Maybe Edge) Node
 
 data Edge = Edge
   { edgeStyle :: Maybe Text,
@@ -91,8 +90,8 @@ pOrientation =
       LR <$ string "LR"
     ]
 
-pVertex :: Parser Text
-pVertex = lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!')) <?> "vertex"
+pVertex :: Parser NodeId
+pVertex = NodeId <$> lexeme (fromString <$> M.some (alphaNumChar <|> char '?' <|> char '!')) <?> "vertex"
 
 pShape :: Parser (Shape, NodeLabel)
 pShape =
@@ -213,8 +212,26 @@ pLink =
             pure $ Edge (Just "-.->") (EdgeLabel <$> content)
     ]
 
-pMultiNode :: Parser Text
-pMultiNode = string "&"
+pNode :: Parser Node
+pNode = do
+  nodeId' <- pVertex
+  maybeShapeLabel <- optional pShape
+  let (shape, label') = spiltJust maybeShapeLabel
+  return $ Node nodeId' shape label'
+
+pMultiNodeInit :: Parser [Node]
+pMultiNodeInit = do
+  node <- pNode
+  pMultiNode [node]
+
+pMultiNode :: [Node] -> Parser [Node]
+pMultiNode nodes = do
+  maybeMultiNode <- optional $ lexeme "&"
+  case maybeMultiNode of
+    Nothing -> return nodes
+    Just _ -> do
+      node <- pNode
+      pMultiNode $ (++) nodes [node]
 
 pDiagram :: Parser Diagram
 pDiagram = L.nonIndented sc (L.indentBlock sc p)
@@ -224,41 +241,27 @@ pDiagram = L.nonIndented sc (L.indentBlock sc p)
       case chart of
         FlowChartType -> do
           void $ lexeme " "
-          orientation <- pOrientation
-          return (L.IndentSome Nothing (return . (FlowChart orientation . foldl1' overlay . fromList . concat)) pFlowChartGraph)
+          orientation' <- pOrientation
+          return (L.IndentSome Nothing (return . (FlowChart orientation' . overlays . fromList . concat)) pFlowChartGraphInit)
         OtherType -> return (L.IndentNone Others)
 
-pFlowChartGraph :: Parser [FlowChartGraph]
-pFlowChartGraph = do
-  vertexL <- pVertex
-  maybeShapeLabel <- optional pShape
-  let (shape, label) = spiltJust maybeShapeLabel
-  pFlowChartGraphRecursive [vertex [Node (NodeId vertexL) shape label]]
+pFlowChartGraphInit :: Parser [FlowChartGraph]
+pFlowChartGraphInit = do
+  nodes <- pMultiNodeInit
+  let isolatedNodes = vertices nodes
+  pFlowChartGraph [isolatedNodes]
 
-pFlowChartGraphRecursive :: [FlowChartGraph] -> Parser [FlowChartGraph]
-pFlowChartGraphRecursive graphs = do
+pFlowChartGraph :: [FlowChartGraph] -> Parser [FlowChartGraph]
+pFlowChartGraph graphs = do
   link <- optional $ lexeme pLink
   case link of
-    Nothing -> do
-      branch <- optional $ lexeme pMultiNode
-      case branch of
-        Just _ -> do
-          vertexR <- pVertex
-          maybeShapeLabel <- optional pShape
-          let (shape, label) = spiltJust maybeShapeLabel
-          case graphs of
-            [Vertex a] -> pFlowChartGraphRecursive [Vertex ((++) a [Node (NodeId vertexR) shape label])]
-            (Connect x y (Vertex a)) : xs -> pFlowChartGraphRecursive $ Connect x y (Vertex ((++) a [Node (NodeId vertexR) shape label])) : xs
-            _ -> return graphs
-        Nothing -> return graphs
+    Nothing -> return graphs
     Just link' -> do
-      vertexR <- pVertex
-      maybeShapeLabel <- optional pShape
-      let (shape, label) = spiltJust maybeShapeLabel
+      nodes <- pMultiNodeInit
+      let isolatedNodes = vertices nodes
       case graphs of
-        [Vertex a] -> pFlowChartGraphRecursive [edge (Just link') a [Node (NodeId vertexR) shape label]]
-        z@((Connect _ _ (Vertex a)) : _) -> pFlowChartGraphRecursive $ edge (Just link') a [Node (NodeId vertexR) shape label] : z
-        _ -> return graphs
+        [] -> return graphs
+        lastGraph : xs -> pFlowChartGraph $ isolatedNodes : connect (Just link') lastGraph isolatedNodes : xs
 
 spiltJust :: Maybe (a, b) -> (Maybe a, Maybe b)
 spiltJust (Just (a, b)) = (Just a, Just b)
