@@ -44,6 +44,8 @@ executable mermaid-hs
     , time
     , unliftio
     , with-utf8
+    , algebraic-graphs
+    , optparse-applicative
 
   mixins:
     base hiding (Prelude),

@@ -1,0 +1,49 @@
+flowchart TD
+    // Ignore all semicolons as of now, do we need that?
+    // Ignore long arrow as of now
+    id
+    id1[This is the text in the box]
+    id1(This is the text in the box)
+    id1([This is the text in the box])
+    id1[[This is the text in the box]]
+    id1[(Database)]
+    id1((This is the text in the circle))
+    id1>This is the text in the box]
+    id1{This is the text in the box}
+    id1{{This is the text in the box}}
+    id1[/This is the text in the box/]
+    id1[\This is the text in the box\]
+    A[/Christmas\]
+    B[\Go shopping/]
+    A-->B
+    A --- B
+    A-- This is the text! ---B
+    A---|This is the text|B
+    A-->|text|B
+    A-- text -->B
+    A-.->B
+    A-. text .-> B
+    A ==> B
+    A == text ==> B
+    A -- text --> B -- text2 --> C
+    a --> b & c--> d
+    A & B--> C & D
+    A --> C
+    A --> D
+    B --> C
+    B --> D
+    A --o B
+    B --x C
+    A o--o B
+    B <--> C
+    C x--x D
+    A[Start] --> B{Is it?}
+    B -->|Yes| C[OK]
+    C --> D[Rethink]
+    D --> B
+    B -->|No| E[End]   // B ---->|No| E[End]
+    A[Start] --> B{Is it?}
+    B -- Yes --> C[OK]
+    C --> D[Rethink]
+    D --> B
+    B -- No --> E[End]  // B -- No ----> E[End]
