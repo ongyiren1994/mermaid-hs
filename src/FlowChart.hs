@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module FlowChart where
 
@@ -17,9 +17,9 @@ data Diagram
         graph :: FlowChartGraph
       }
   | Others
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
-data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show)
+data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show, Generic)
 
 type FlowChartGraph = Graph (Maybe Edge) Node
 
@@ -27,13 +27,10 @@ data Edge = Edge
   { edgeStyle :: Maybe Text,
     edgeLabel :: Maybe EdgeLabel
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 instance Semigroup Edge where
   (<>) (Edge a b) (Edge c d) = Edge (a <> c) (b <> d)
-
-instance Monoid Edge where
-  mempty = Edge Nothing Nothing
 
 instance Semigroup EdgeLabel where
   (<>) (EdgeLabel a) (EdgeLabel b) = EdgeLabel (a <> b)
@@ -43,19 +40,19 @@ data Node = Node
     nodeShape :: Maybe Shape,
     nodeLabel :: Maybe NodeLabel
   }
-  deriving (Eq, Show, Ord)
+  deriving (Eq, Show, Ord, Generic)
 
-data Shape = Default | Rhombus | Round | Stadium | Subroutine | Cylindrical | Circle | Asymmetric | Hexagon | Parallelogram | ParallelogramAlt | Trapezoid | TrapezoidAlt deriving (Eq, Show, Ord)
+data Shape = Default | Rhombus | Round | Stadium | Subroutine | Cylindrical | Circle | Asymmetric | Hexagon | Parallelogram | ParallelogramAlt | Trapezoid | TrapezoidAlt deriving (Eq, Show, Ord, Generic)
 
-newtype NodeLabel = NodeLabel {unNodeLabel :: Text} deriving (Eq, Show, Ord)
+newtype NodeLabel = NodeLabel {unNodeLabel :: Text} deriving (Eq, Show, Ord, Generic)
 
-newtype NodeId = NodeId {unNodeId :: Text} deriving (Eq, Show, Ord)
+newtype NodeId = NodeId {unNodeId :: Text} deriving (Eq, Show, Ord, Generic)
 
-newtype EdgeLabel = EdgeLabel {unEdgeLabel :: Text} deriving (Eq, Show)
+newtype EdgeLabel = EdgeLabel {unEdgeLabel :: Text} deriving (Eq, Show, Generic)
 
-newtype EdgeStyle = EdgeStyle {unEdgeStyle :: Text} deriving (Eq, Show)
+newtype EdgeStyle = EdgeStyle {unEdgeStyle :: Text} deriving (Eq, Show, Generic)
 
-data DiagramType = FlowChartType | OtherType deriving (Eq, Show)
+data DiagramType = FlowChartType | OtherType deriving (Eq, Show, Generic)
 
 sc :: Parser ()
 sc =
