@@ -1,31 +1,24 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module FlowChart where
 
 import Algebra.Graph.Labelled as LG
+import Control.Lens.TH (makeLenses)
+import Parser
 import System.Directory.Internal.Prelude ()
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec as M
 import Text.Megaparsec.Char (alphaNumChar, char, space1, string)
 import qualified Text.Megaparsec.Char.Lexer as L
 
-type Parser = Parsec Void Text
-
-data Diagram
-  = FlowChart
-      { orientation :: Orientation,
-        graph :: FlowChartGraph
-      }
-  | Others
-  deriving (Eq, Show, Generic)
-
 data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show, Generic)
 
 type FlowChartGraph = Graph (Maybe Edge) Node
 
 data Edge = Edge
-  { edgeStyle :: Maybe Text,
-    edgeLabel :: Maybe EdgeLabel
+  { _edgeStyle :: Maybe Text,
+    _edgeLabel :: Maybe EdgeLabel
   }
   deriving (Eq, Show, Generic)
 
@@ -36,23 +29,46 @@ instance Semigroup EdgeLabel where
   (<>) (EdgeLabel a) (EdgeLabel b) = EdgeLabel (a <> b)
 
 data Node = Node
-  { nodeId :: NodeId,
-    nodeShape :: Maybe Shape,
-    nodeLabel :: Maybe NodeLabel
+  { _nodeId :: NodeId,
+    _nodeShape :: Maybe Shape,
+    _nodeLabel :: Maybe NodeLabel
   }
   deriving (Eq, Show, Ord, Generic)
 
 data Shape = Default | Rhombus | Round | Stadium | Subroutine | Cylindrical | Circle | Asymmetric | Hexagon | Parallelogram | ParallelogramAlt | Trapezoid | TrapezoidAlt deriving (Eq, Show, Ord, Generic)
 
-newtype NodeLabel = NodeLabel {unNodeLabel :: Text} deriving (Eq, Show, Ord, Generic)
+newtype NodeLabel = NodeLabel {_unNodeLabel :: Text} deriving (Eq, Show, Ord, Generic)
 
-newtype NodeId = NodeId {unNodeId :: Text} deriving (Eq, Show, Ord, Generic)
+newtype NodeId = NodeId {_unNodeId :: Text} deriving (Eq, Show, Ord, Generic)
 
-newtype EdgeLabel = EdgeLabel {unEdgeLabel :: Text} deriving (Eq, Show, Generic)
+newtype EdgeLabel = EdgeLabel {_unEdgeLabel :: Text} deriving (Eq, Show, Generic)
 
-newtype EdgeStyle = EdgeStyle {unEdgeStyle :: Text} deriving (Eq, Show, Generic)
+newtype EdgeStyle = EdgeStyle {_unEdgeStyle :: Text} deriving (Eq, Show, Generic)
 
-data DiagramType = FlowChartType | OtherType deriving (Eq, Show, Generic)
+makeLenses ''Orientation
+
+makeLenses ''Edge
+
+makeLenses ''Node
+
+makeLenses ''Shape
+
+makeLenses ''NodeLabel
+
+makeLenses ''NodeId
+
+makeLenses ''EdgeLabel
+
+makeLenses ''EdgeStyle
+
+instance IsString NodeId where
+  fromString s = NodeId (fromString s)
+
+instance IsString Node where
+  fromString s = Node (fromString s) Nothing Nothing
+
+instance IsString Edge where
+  fromString s = Edge (Just (fromString s)) Nothing
 
 sc :: Parser ()
 sc =
@@ -69,13 +85,6 @@ symbol = L.symbol sc
 
 someShape :: Text -> Text -> Parser a -> Parser a
 someShape open close = between (symbol open) (symbol close)
-
-pDiagramType :: Parser DiagramType
-pDiagramType =
-  choice
-    [ FlowChartType <$ string "flowchart",
-      OtherType <$ string "PLACEHOLDER"
-    ]
 
 pOrientation :: Parser Orientation
 pOrientation =
@@ -229,18 +238,6 @@ pMultiNode nodes = do
     Just _ -> do
       node <- pNode
       pMultiNode $ (++) nodes [node]
-
-pDiagram :: Parser Diagram
-pDiagram = L.nonIndented sc (L.indentBlock sc p)
-  where
-    p = do
-      chart <- pDiagramType
-      case chart of
-        FlowChartType -> do
-          void $ lexeme " "
-          orientation' <- pOrientation
-          return (L.IndentSome Nothing (return . (FlowChart orientation' . overlays . fromList . concat)) pFlowChartGraphInit)
-        OtherType -> return (L.IndentNone Others)
 
 pFlowChartGraphInit :: Parser [FlowChartGraph]
 pFlowChartGraphInit = do
