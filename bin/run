@@ -1,8 +1,3 @@
 #!/usr/bin/env bash
 set -xe
-
-# This will run ghcid, which uses `./.ghcid` to invoke your program main entry
-# point, with the specified args.
-#
-# If you change ./.ghcid, ghcid will automatically reload.
-exec nix develop -c ghcid
+nix-shell --pure --run "ghcid --warnings -c 'cabal new-repl exe:mermaid-hs --flags=ghcid' -T \":main -f test-file\""

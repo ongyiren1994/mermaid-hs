@@ -2,6 +2,7 @@
 
 module Main where
 
+import Diagram
 import FlowChart
 import Main.Utf8 (withUtf8)
 import Options.Applicative as O
