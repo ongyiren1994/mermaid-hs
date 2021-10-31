@@ -6,6 +6,15 @@ import Parser
 import Text.Megaparsec as M
 import Text.Megaparsec.Char (alphaNumChar, char, string)
 
+data GExpr
+  = GExprSection Section
+  | GExprDateFormat DateFormat
+  | GExprGanttCharTitle GanttChartTitle
+  | GExprAxisFormat AxisFormat
+  | GExprSectionTitle SectionTitle
+  | GExprTask Task
+  deriving (Eq, Show, Generic)
+
 data GanttChartGraph = GanttChartGraph
   { _ganttChartTitle :: GanttChartTitle,
     _dateFormat :: DateFormat,
@@ -71,28 +80,32 @@ instance IsString Task where
 instance IsString TaskName where
   fromString s = TaskName (fromString s)
 
-pGanttChartTitle :: Parser GanttChartTitle
+pGanttChartTitle :: Parser GExpr
 pGanttChartTitle = do
   void $ lexeme $ string "title"
-  lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+  ganttChartTitle <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+  return $ GExprGanttCharTitle ganttChartTitle
 
-pDateFormat :: Parser DateFormat
+pDateFormat :: Parser GExpr
 pDateFormat = do
   void $ lexeme $ string "dateFormat"
-  lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+  dateFormat <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+  return $ GExprDateFormat dateFormat
 
-pAxisFormat :: Parser AxisFormat
+pAxisFormat :: Parser GExpr
 pAxisFormat = do
   void $ lexeme $ string "axisFormat"
-  lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+  axisFormat <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+  return $ GExprAxisFormat axisFormat
 
-pSectionTitle :: Parser SectionTitle
+pSectionTitle :: Parser GExpr
 pSectionTitle = do
   void $ lexeme $ string "section"
-  lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+  sectionTitle <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+  return $ GExprSectionTitle sectionTitle
 
-pTask :: Parser Task
+pTask :: Parser GExpr
 pTask = do
-  taskName <- lexeme $ (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+  taskName <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
   void $ lexeme $ string ":"
-  Task taskName <$> pTaskState
+  GExprTask . Task taskName <$> pTaskState
