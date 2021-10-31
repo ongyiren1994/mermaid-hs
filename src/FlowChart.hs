@@ -9,8 +9,7 @@ import Parser
 import System.Directory.Internal.Prelude ()
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec as M
-import Text.Megaparsec.Char (alphaNumChar, char, space1, string)
-import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Megaparsec.Char (alphaNumChar, char, string)
 
 data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show, Generic)
 
@@ -69,19 +68,6 @@ instance IsString Node where
 
 instance IsString Edge where
   fromString s = Edge (Just (fromString s)) Nothing
-
-sc :: Parser ()
-sc =
-  L.space
-    space1
-    (L.skipLineComment "//")
-    M.empty
-
-lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
-
-symbol :: Text -> Parser Text
-symbol = L.symbol sc
 
 someShape :: Text -> Text -> Parser a -> Parser a
 someShape open close = between (symbol open) (symbol close)

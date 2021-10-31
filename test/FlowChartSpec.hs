@@ -15,12 +15,12 @@ import Test.Hspec
 import Text.Megaparsec
 
 shouldHaveEdges :: Maybe Diagram -> [(Edge, Node, Node)] -> Expectation
-shouldHaveEdges diagram edges = fmap (edgeList . _graph) diagram `shouldBe` Just (fmap (& _1 %~ Just) edges)
+shouldHaveEdges diagram edges = fmap (edgeList . _flowGraph) diagram `shouldBe` Just (fmap (& _1 %~ Just) edges)
 
 infix 1 `shouldHaveEdges`
 
 shouldHaveNodes :: Maybe Diagram -> [Node] -> Expectation
-shouldHaveNodes diagram nodes = fmap (vertexList . _graph) diagram `shouldBe` Just nodes
+shouldHaveNodes diagram nodes = fmap (vertexList . _flowGraph) diagram `shouldBe` Just nodes
 
 infix 1 `shouldHaveNodes`
 
