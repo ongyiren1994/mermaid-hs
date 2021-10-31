@@ -13,6 +13,7 @@ data GExpr
   | GExprAxisFormat AxisFormat
   | GExprSectionTitle SectionTitle
   | GExprTask Task
+  | GExprEmptyLine
   deriving (Eq, Show, Generic)
 
 data GanttChartGraph = GanttChartGraph
@@ -109,3 +110,12 @@ pTask = do
   taskName <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
   void $ lexeme $ string ":"
   GExprTask . Task taskName <$> pTaskState
+
+pEmptyLine :: Parser GExpr
+pEmptyLine = do
+  void $ lexeme ""
+  return GExprEmptyLine
+
+pGanttChart :: Parser GExpr
+pGanttChart = do
+  pGanttChartTitle <|> pDateFormat <|> pAxisFormat <|> pSectionTitle <|> pTask <|> pEmptyLine
