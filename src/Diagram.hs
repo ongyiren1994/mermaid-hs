@@ -21,10 +21,6 @@ data Diagram
 
 makeLenses ''Diagram
 
-data DiagramType = FlowChartType | GanttChartType | OtherType deriving (Eq, Show, Generic)
-
-makeLenses ''DiagramType
-
 pDiagram :: Parser [Diagram]
 pDiagram = many $ pGanttChartDiagram <|> pFlowChartDiagram
 
