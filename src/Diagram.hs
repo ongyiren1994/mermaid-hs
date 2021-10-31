@@ -16,8 +16,7 @@ data Diagram
       { _orientation :: Orientation,
         _flowGraph :: FlowChartGraph
       }
-  | -- Replace [GExpr] with GanttChartGraph
-    GanttChart {_ganttGraph :: [GExpr]}
+  | GanttChart {_ganttGraph :: GanttChartGraph}
   deriving (Eq, Show, Generic)
 
 makeLenses ''Diagram
@@ -26,15 +25,15 @@ data DiagramType = FlowChartType | GanttChartType | OtherType deriving (Eq, Show
 
 makeLenses ''DiagramType
 
-pDiagram :: Parser Diagram
-pDiagram = pGanttChartDiagram <|> pFlowChartDiagram
+pDiagram :: Parser [Diagram]
+pDiagram = many $ pGanttChartDiagram <|> pFlowChartDiagram
 
 pGanttChartDiagram :: Parser Diagram
 pGanttChartDiagram = L.nonIndented sc (L.indentBlock sc p)
   where
     p = do
       void $ string "gantt"
-      return (L.IndentSome Nothing (return . GanttChart) pGanttChart)
+      return (L.IndentSome Nothing (return . (GanttChart . gExprToGanttChartGraph)) pGanttChart)
 
 pFlowChartDiagram :: Parser Diagram
 pFlowChartDiagram = L.nonIndented sc (L.indentBlock sc p)

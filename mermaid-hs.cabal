@@ -58,6 +58,7 @@ common library-common
     , with-utf8
     , algebraic-graphs
     , optparse-applicative
+    , split
 
   mixins:
     base hiding (Prelude),

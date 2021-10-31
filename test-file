@@ -47,3 +47,21 @@ flowchart TD
     C --> D[Rethink]
     D --> B
     B -- No --> E[End]  // B -- No ----> E[End]
+gantt
+    title Today's Plan
+    dateFormat  HH:mm
+    axisFormat %H:%M
+
+    section Hacking
+    TT Mermaid     : done, mm, 11:00, 38m
+    TT Finish : active, tt, after mm, 2h
+    Emanote concurrent load : after tt, 2h
+
+    section Reading
+    Deep Work      :crit, after bell  , 1h
+    Mailbrew      :20:30, 1h
+
+    section Errands
+    Family call :done, 10:30, 45m
+    Bell installation : bell, 12:00, 5h
+    Eat :18:00, 1h
