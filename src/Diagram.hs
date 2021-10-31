@@ -6,9 +6,8 @@ module Diagram where
 import Algebra.Graph.Labelled as LG
 import Control.Lens.TH (makeLenses)
 import FlowChart
-import GanttChart (GanttChartGraph)
+import GanttChart
 import Parser
-import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char (string)
 import qualified Text.Megaparsec.Char.Lexer as L
 
@@ -17,8 +16,8 @@ data Diagram
       { _orientation :: Orientation,
         _flowGraph :: FlowChartGraph
       }
-  | GanttChart {_ganttGraph :: GanttChartGraph}
-  | Others
+  | -- Replace [GExpr] with GanttChartGraph
+    GanttChart {_ganttGraph :: [GExpr]}
   deriving (Eq, Show, Generic)
 
 makeLenses ''Diagram
@@ -28,22 +27,20 @@ data DiagramType = FlowChartType | GanttChartType | OtherType deriving (Eq, Show
 makeLenses ''DiagramType
 
 pDiagram :: Parser Diagram
-pDiagram = L.nonIndented sc (L.indentBlock sc p)
+pDiagram = pGanttChartDiagram <|> pFlowChartDiagram
+
+pGanttChartDiagram :: Parser Diagram
+pGanttChartDiagram = L.nonIndented sc (L.indentBlock sc p)
   where
     p = do
-      chart <- pDiagramType
-      case chart of
-        FlowChartType -> do
-          void $ lexeme " "
-          orientation' <- pOrientation
-          return (L.IndentSome Nothing (return . (FlowChart orientation' . overlays . fromList . concat)) pFlowChartGraphInit)
-        GanttChartType -> return (L.IndentNone Others)
-        OtherType -> return (L.IndentNone Others)
+      void $ string "gantt"
+      return (L.IndentSome Nothing (return . GanttChart) pGanttChart)
 
-pDiagramType :: Parser DiagramType
-pDiagramType =
-  choice
-    [ FlowChartType <$ string "flowchart",
-      GanttChartType <$ string "gantt",
-      OtherType <$ string "PLACEHOLDER"
-    ]
+pFlowChartDiagram :: Parser Diagram
+pFlowChartDiagram = L.nonIndented sc (L.indentBlock sc p)
+  where
+    p = do
+      void $ string "flowchart"
+      void $ lexeme " "
+      orientation' <- pOrientation
+      return (L.IndentSome Nothing (return . (FlowChart orientation' . overlays . fromList . concat)) pFlowChartGraphInit)
