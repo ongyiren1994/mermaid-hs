@@ -38,7 +38,7 @@ newtype SectionTitle = SectionTitle {unSectionTile :: Text} deriving (Eq, Show, 
 
 newtype TaskName = TaskName {unTaskName :: Text} deriving (Eq, Show, Generic)
 
-data TaskState = Done | Active | Crit | After | OtherState deriving (Eq, Show, Generic)
+data TaskState = Done | Active | Crit | After deriving (Eq, Show, Generic)
 
 makeLenses ''GanttChartGraph
 
