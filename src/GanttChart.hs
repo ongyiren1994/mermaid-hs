@@ -1,20 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module GanttChart where
 
-import Data.List.Split
+import Control.Lens.TH (makeLenses)
 import Parser
 import Text.Megaparsec as M
 import Text.Megaparsec.Char (alphaNumChar, char, string)
-
-data GExpr
-  = GExprDateFormat DateFormat
-  | GExprGanttChartTitle GanttChartTitle
-  | GExprAxisFormat AxisFormat
-  | GExprSectionTitle SectionTitle
-  | GExprTask Task
-  | GExprEmptyLine
-  deriving (Eq, Show, Generic)
 
 data GanttChartGraph = GanttChartGraph
   { _ganttChartTitle :: GanttChartTitle,
@@ -32,19 +24,9 @@ data Section = Section
 
 data Task = Task
   { _taskName :: TaskName,
-    _taskState :: TaskState
+    _taskState :: Maybe TaskState
   }
   deriving (Eq, Show, Generic)
-
-pTaskState :: Parser TaskState
-pTaskState =
-  choice
-    [ Done <$ string "done",
-      Active <$ string "active",
-      Crit <$ string "crit",
-      After <$ string "after",
-      OtherState <$ M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%')
-    ]
 
 newtype GanttChartTitle = GanttChartTitle {unGanttChartTitle :: Text} deriving (Eq, Show, Generic)
 
@@ -57,6 +39,24 @@ newtype SectionTitle = SectionTitle {unSectionTile :: Text} deriving (Eq, Show, 
 newtype TaskName = TaskName {unTaskName :: Text} deriving (Eq, Show, Generic)
 
 data TaskState = Done | Active | Crit | After | OtherState deriving (Eq, Show, Generic)
+
+makeLenses ''GanttChartGraph
+
+makeLenses ''GanttChartTitle
+
+makeLenses ''DateFormat
+
+makeLenses ''AxisFormat
+
+makeLenses ''Section
+
+makeLenses ''SectionTitle
+
+makeLenses ''Task
+
+makeLenses ''TaskName
+
+makeLenses ''TaskState
 
 instance IsString GanttChartGraph where
   fromString s = GanttChartGraph (fromString s) "" "" []
@@ -77,67 +77,58 @@ instance IsString SectionTitle where
   fromString s = SectionTitle (fromString s)
 
 instance IsString Task where
-  fromString s = Task (fromString s) Done
+  fromString s = Task (fromString s) Nothing
 
 instance IsString TaskName where
   fromString s = TaskName (fromString s)
 
-pGanttChartTitle :: Parser GExpr
+pGanttChartTitle :: Parser GanttChartTitle
 pGanttChartTitle = do
   void $ lexeme $ string "title"
-  ganttChartTitle <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
-  return $ GExprGanttChartTitle ganttChartTitle
+  lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
 
-pDateFormat :: Parser GExpr
+pDateFormat :: Parser DateFormat
 pDateFormat = do
   void $ lexeme $ string "dateFormat"
-  dateFormat <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
-  return $ GExprDateFormat dateFormat
+  lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
 
-pAxisFormat :: Parser GExpr
+pAxisFormat :: Parser AxisFormat
 pAxisFormat = do
   void $ lexeme $ string "axisFormat"
-  axisFormat <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
-  return $ GExprAxisFormat axisFormat
+  lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
 
-pSectionTitle :: Parser GExpr
+pSections :: Pos -> Parser [Section]
+pSections ref = M.many $ pSection ref
+
+pSection :: Pos -> Parser Section
+pSection ref = do
+  void $ pCheckIndent ref
+  sectionTitle <- pSectionTitle
+  tasks <- pTasks ref
+  return $ Section sectionTitle tasks
+
+pTasks :: Pos -> Parser [Task]
+pTasks ref = M.many $ try $ pTask ref
+
+pSectionTitle :: Parser SectionTitle
 pSectionTitle = do
   void $ lexeme $ string "section"
-  sectionTitle <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
-  return $ GExprSectionTitle sectionTitle
+  lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
 
-pTask :: Parser GExpr
-pTask = do
+pTask :: Pos -> Parser Task
+pTask ref = do
+  void $ pCheckIndent ref
   taskName <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char '%'))
   void $ lexeme $ string ":"
-  taskState <- lexeme pTaskState
+  taskState <- lexeme $ optional pTaskState
   void $ lexeme $ M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%')
-  return $ GExprTask $ Task taskName taskState
+  return $ Task taskName taskState
 
-pGanttChart :: Parser GExpr
-pGanttChart =
-  pGanttChartTitle <|> pDateFormat <|> pAxisFormat <|> pSectionTitle <|> pTask
-
-gExprToGanttChartGraph :: [GExpr] -> GanttChartGraph
-gExprToGanttChartGraph gExprs =
-  case gExprs of
-    GExprGanttChartTitle a : GExprDateFormat b : GExprAxisFormat c : d -> GanttChartGraph a b c $ gExprToSection <$> splitGExprTask d
-    _ -> error "Invalid"
-
-splitGExprTask :: [GExpr] -> [[GExpr]]
-splitGExprTask = split (keepDelimsL . dropInitBlank $ whenElt isGExprSectionTitle)
-
-isGExprSectionTitle :: GExpr -> Bool
-isGExprSectionTitle gExpr = case gExpr of
-  GExprSectionTitle _ -> True
-  _ -> False
-
-gExprToSection :: [GExpr] -> Section
-gExprToSection gExprs = do
-  case gExprs of
-    GExprSectionTitle a : b -> Section a $ fmap gExprToTask b
-    _ -> error "Invalid"
-
-gExprToTask :: GExpr -> Task
-gExprToTask (GExprTask a) = a
-gExprToTask _ = error "Invalid"
+pTaskState :: Parser TaskState
+pTaskState =
+  choice
+    [ Done <$ string "done",
+      Active <$ string "active",
+      Crit <$ string "crit",
+      After <$ string "after"
+    ]

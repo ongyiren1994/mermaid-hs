@@ -25,11 +25,18 @@ pDiagram :: Parser [Diagram]
 pDiagram = many $ pGanttChartDiagram <|> pFlowChartDiagram
 
 pGanttChartDiagram :: Parser Diagram
-pGanttChartDiagram = L.nonIndented sc (L.indentBlock sc p)
+pGanttChartDiagram = L.nonIndented sc p
   where
     p = do
-      void $ string "gantt"
-      return (L.IndentSome Nothing (return . (GanttChart . gExprToGanttChartGraph)) pGanttChart)
+      void $ lexeme "gantt"
+      ref <- L.indentLevel
+      ganttChartTitle <- pGanttChartTitle
+      void $ pCheckIndent ref
+      dateFormat <- pDateFormat
+      void $ pCheckIndent ref
+      axisFormat <- pAxisFormat
+      sections <- pSections ref
+      return $ GanttChart (GanttChartGraph ganttChartTitle dateFormat axisFormat sections)
 
 pFlowChartDiagram :: Parser Diagram
 pFlowChartDiagram = L.nonIndented sc (L.indentBlock sc p)
