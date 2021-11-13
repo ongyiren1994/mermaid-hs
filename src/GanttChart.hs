@@ -108,16 +108,18 @@ pSection ref = do
   return $ Section sectionTitle tasks
 
 pTasks :: Pos -> Parser [Task]
-pTasks ref = M.many $ try $ pTask ref
+pTasks ref = M.many $
+  try $ do
+    void $ pCheckIndent ref
+    pTask
 
 pSectionTitle :: Parser SectionTitle
 pSectionTitle = do
   void $ lexeme $ string "section"
   lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
 
-pTask :: Pos -> Parser Task
-pTask ref = do
-  void $ pCheckIndent ref
+pTask :: Parser Task
+pTask = do
   taskName <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char '%'))
   void $ lexeme $ string ":"
   taskState <- lexeme $ optional pTaskState
