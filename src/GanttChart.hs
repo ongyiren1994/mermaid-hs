@@ -69,19 +69,13 @@ instance IsString Task where
   fromString s = Task (fromString s) Nothing
 
 pGanttChartTitle :: Parser GanttChartTitle
-pGanttChartTitle = do
-  void $ lexeme $ string "title"
-  lexeme (fromString <$> M.some (pText <|> char ':'))
+pGanttChartTitle = lexeme $ string "title" >> lexeme (fromString <$> M.some (pText <|> char ':'))
 
 pDateFormat :: Parser DateFormat
-pDateFormat = do
-  void $ lexeme $ string "dateFormat"
-  lexeme (fromString <$> M.some (pText <|> char ':'))
+pDateFormat = lexeme $ string "dateFormat" >> lexeme (fromString <$> M.some (pText <|> char ':'))
 
 pAxisFormat :: Parser AxisFormat
-pAxisFormat = do
-  void $ lexeme $ string "axisFormat"
-  lexeme (fromString <$> M.some (pText <|> char ':'))
+pAxisFormat = lexeme $ string "axisFormat" >> lexeme (fromString <$> M.some (pText <|> char ':'))
 
 pSections :: Pos -> Parser [Section]
 pSections ref = M.many $ pSection ref
@@ -94,19 +88,14 @@ pSection ref = do
   return $ Section sectionTitle tasks
 
 pTasks :: Pos -> Parser [Task]
-pTasks ref = M.many $
-  try $ do
-    void $ pCheckIndent ref
-    pTask
+pTasks ref = M.many $ try $ pCheckIndent ref >> pTask
 
 pSectionTitle :: Parser SectionTitle
-pSectionTitle = do
-  void $ lexeme $ string "section"
-  lexeme (fromString <$> M.some (pText <|> char ':'))
+pSectionTitle = lexeme $ string "section" >> lexeme (fromString <$> M.some (pText <|> char ':'))
 
 pTask :: Parser Task
 pTask = do
-  taskName <- lexeme (fromString <$> (M.some pText))
+  taskName <- lexeme (fromString <$> M.some pText)
   void $ lexeme $ string ":"
   taskState <- lexeme $ optional pTaskState
   void $ lexeme $ M.some (pText <|> char ':')

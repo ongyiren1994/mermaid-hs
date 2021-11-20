@@ -105,18 +105,18 @@ pShape =
         content <- someShape "{{" "}}" (fromString <$> M.some pText)
         pure (Hexagon, NodeLabel content),
       do
-        void $ lexeme $ "[/"
+        void $ lexeme "[/"
         content <- fromString <$> M.some pText
-        closeShapeA <- optional $ lexeme $ "/]"
+        closeShapeA <- optional $ lexeme "/]"
         case closeShapeA of
           Just _ -> pure (Parallelogram, NodeLabel content)
           Nothing -> do
             void $ lexeme "\\]"
             pure (Trapezoid, NodeLabel content),
       do
-        void $ lexeme $ "[\\"
+        void $ lexeme "[\\"
         content <- fromString <$> M.some pText
-        closeShapeA <- optional $ lexeme $ "\\]"
+        closeShapeA <- optional $ lexeme "\\]"
         case closeShapeA of
           Just _ -> pure (ParallelogramAlt, NodeLabel content)
           Nothing -> do
