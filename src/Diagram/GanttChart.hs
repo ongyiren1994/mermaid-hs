@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module GanttChart where
+module Diagram.GanttChart where
 
 import Control.Lens.TH (makeLenses)
 import Parser
@@ -83,9 +83,9 @@ pSections ref = M.many $ pSection ref
 pSection :: Pos -> Parser Section
 pSection ref = do
   void $ pCheckIndent ref
-  sectionTitle <- pSectionTitle
+  title <- pSectionTitle
   tasks <- pTasks ref
-  return $ Section sectionTitle tasks
+  return $ Section title tasks
 
 pTasks :: Pos -> Parser [Task]
 pTasks ref = M.many $ try $ pCheckIndent ref >> pTask
@@ -95,11 +95,11 @@ pSectionTitle = lexeme $ string "section" >> lexeme (fromString <$> M.some (pTex
 
 pTask :: Parser Task
 pTask = do
-  taskName <- lexeme (fromString <$> M.some pText)
+  name <- lexeme (fromString <$> M.some pText)
   void $ lexeme $ string ":"
-  taskState <- lexeme $ optional pTaskState
+  state' <- lexeme $ optional pTaskState
   void $ lexeme $ M.some (pText <|> char ':')
-  return $ Task taskName taskState
+  return $ Task name state'
 
 pTaskState :: Parser TaskState
 pTaskState =

@@ -79,12 +79,13 @@ common library-common
     TupleSections
     ViewPatterns
 
-
 library
   import: library-common
   hs-source-dirs:     src
   exposed-modules:
-    FlowChart
+    Diagram
+    Diagram.FlowChart
+    Diagram.GanttChart
     Parser
 
 test-suite mermaid-hs-test
@@ -102,7 +103,11 @@ test-suite mermaid-hs-test
   else
     build-depends: mermaid-hs
     other-modules:
+      Diagram
+      Diagram.FlowChart
+      Diagram.GanttChart
       FlowChartSpec
+      Parser
 
 executable mermaid-hs
   import: library-common

@@ -2,13 +2,12 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module FlowChart where
+module Diagram.FlowChart where
 
 import Algebra.Graph.Labelled as LG
 import Control.Lens.TH (makeLenses)
 import Parser
 import System.Directory.Internal.Prelude ()
-import Text.Megaparsec hiding (State)
 import Text.Megaparsec as M
 import Text.Megaparsec.Char (alphaNumChar, char, string)
 

@@ -5,8 +5,8 @@ module Diagram where
 
 import Algebra.Graph.Labelled as LG
 import Control.Lens.TH (makeLenses)
-import FlowChart
-import GanttChart
+import Diagram.FlowChart
+import Diagram.GanttChart
 import Parser
 import Text.Megaparsec.Char (string)
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -25,13 +25,13 @@ pGanttChartGraph = L.nonIndented sc p
     p = do
       void $ lexeme "gantt"
       ref <- L.indentLevel
-      ganttChartTitle <- pGanttChartTitle
+      chartTitle <- pGanttChartTitle
       void $ pCheckIndent ref
       dateFormat <- pDateFormat
       void $ pCheckIndent ref
       axisFormat <- pAxisFormat
       sections <- pSections ref
-      return $ GanttChartGraph ganttChartTitle dateFormat axisFormat sections
+      return $ GanttChartGraph chartTitle dateFormat axisFormat sections
 
 pFlowChartGraph :: Parser FlowChartGraph
 pFlowChartGraph = L.nonIndented sc (L.indentBlock sc p)
