@@ -14,7 +14,13 @@ import Text.Megaparsec.Char (alphaNumChar, char, string)
 
 data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show, Generic)
 
-type FlowChartGraph = Graph (Maybe Edge) Node
+data FlowChartGraph = FlowChartGraph
+  { _flowChartOrientation :: Orientation,
+    _flowChartGraph :: SubFlowChartGraph
+  }
+  deriving (Eq, Show, Generic)
+
+type SubFlowChartGraph = Graph (Maybe Edge) Node
 
 data Edge = Edge
   { _edgeStyle :: Maybe Text,
@@ -223,14 +229,14 @@ pMultiNode nodes = do
       node <- pNode
       pMultiNode $ (++) nodes [node]
 
-pFlowChartGraphInit :: Parser [FlowChartGraph]
-pFlowChartGraphInit = do
+pSubFlowChartGraphInit :: Parser [SubFlowChartGraph]
+pSubFlowChartGraphInit = do
   nodes <- pMultiNodeInit
   let isolatedNodes = vertices nodes
-  pFlowChartGraph [isolatedNodes]
+  pSubFlowChartGraph [isolatedNodes]
 
-pFlowChartGraph :: [FlowChartGraph] -> Parser [FlowChartGraph]
-pFlowChartGraph graphs = do
+pSubFlowChartGraph :: [SubFlowChartGraph] -> Parser [SubFlowChartGraph]
+pSubFlowChartGraph graphs = do
   link <- optional $ lexeme pLink
   case link of
     Nothing -> return graphs
@@ -239,7 +245,7 @@ pFlowChartGraph graphs = do
       let isolatedNodes = vertices nodes
       case graphs of
         [] -> return graphs
-        lastGraph : xs -> pFlowChartGraph $ isolatedNodes : connect (Just link') lastGraph isolatedNodes : xs
+        lastGraph : xs -> pSubFlowChartGraph $ isolatedNodes : connect (Just link') lastGraph isolatedNodes : xs
 
 spiltJust :: Maybe (a, b) -> (Maybe a, Maybe b)
 spiltJust (Just (a, b)) = (Just a, Just b)

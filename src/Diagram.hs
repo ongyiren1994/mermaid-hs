@@ -11,21 +11,16 @@ import Parser
 import Text.Megaparsec.Char (string)
 import qualified Text.Megaparsec.Char.Lexer as L
 
-data Diagram
-  = FlowChart
-      { _orientation :: Orientation,
-        _flowGraph :: FlowChartGraph
-      }
-  | GanttChart {_ganttGraph :: GanttChartGraph}
+data Diagram = D_FlowChart FlowChartGraph | D_GanttChart GanttChartGraph
   deriving (Eq, Show, Generic)
 
 makeLenses ''Diagram
 
 pDiagram :: Parser [Diagram]
-pDiagram = many $ pGanttChartDiagram <|> pFlowChartDiagram
+pDiagram = many $ fmap D_GanttChart pGanttChartGraph <|> fmap D_FlowChart pFlowChartGraph
 
-pGanttChartDiagram :: Parser Diagram
-pGanttChartDiagram = L.nonIndented sc p
+pGanttChartGraph :: Parser GanttChartGraph
+pGanttChartGraph = L.nonIndented sc p
   where
     p = do
       void $ lexeme "gantt"
@@ -36,13 +31,13 @@ pGanttChartDiagram = L.nonIndented sc p
       void $ pCheckIndent ref
       axisFormat <- pAxisFormat
       sections <- pSections ref
-      return $ GanttChart (GanttChartGraph ganttChartTitle dateFormat axisFormat sections)
+      return $ GanttChartGraph ganttChartTitle dateFormat axisFormat sections
 
-pFlowChartDiagram :: Parser Diagram
-pFlowChartDiagram = L.nonIndented sc (L.indentBlock sc p)
+pFlowChartGraph :: Parser FlowChartGraph
+pFlowChartGraph = L.nonIndented sc (L.indentBlock sc p)
   where
     p = do
       void $ string "flowchart"
       void $ lexeme " "
       orientation' <- pOrientation
-      return (L.IndentSome Nothing (return . (FlowChart orientation' . overlays . fromList . concat)) pFlowChartGraphInit)
+      return (L.IndentSome Nothing (return . (FlowChartGraph orientation' . overlays . fromList . concat)) pSubFlowChartGraphInit)
