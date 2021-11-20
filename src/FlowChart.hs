@@ -87,26 +87,26 @@ pShape :: Parser (Shape, NodeLabel)
 pShape =
   choice
     [ do
-        content <- someShape "([" "])" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "([" "])" (fromString <$> M.some pText)
         pure (Stadium, NodeLabel content),
       do
-        content <- someShape "[[" "]]" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "[[" "]]" (fromString <$> M.some pText)
         pure (Subroutine, NodeLabel content),
       do
-        content <- someShape "((" "))" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "((" "))" (fromString <$> M.some pText)
         pure (Cylindrical, NodeLabel content),
       do
-        content <- someShape "[(" ")]" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "[(" ")]" (fromString <$> M.some pText)
         pure (Circle, NodeLabel content),
       do
-        content <- someShape ">" "]" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape ">" "]" (fromString <$> M.some pText)
         pure (Asymmetric, NodeLabel content),
       do
-        content <- someShape "{{" "}}" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "{{" "}}" (fromString <$> M.some pText)
         pure (Hexagon, NodeLabel content),
       do
         void $ lexeme $ "[/"
-        content <- fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!')
+        content <- fromString <$> M.some pText
         closeShapeA <- optional $ lexeme $ "/]"
         case closeShapeA of
           Just _ -> pure (Parallelogram, NodeLabel content)
@@ -115,7 +115,7 @@ pShape =
             pure (Trapezoid, NodeLabel content),
       do
         void $ lexeme $ "[\\"
-        content <- fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!')
+        content <- fromString <$> M.some pText
         closeShapeA <- optional $ lexeme $ "\\]"
         case closeShapeA of
           Just _ -> pure (ParallelogramAlt, NodeLabel content)
@@ -123,13 +123,13 @@ pShape =
             void $ lexeme "/]"
             pure (TrapezoidAlt, NodeLabel content),
       do
-        content <- someShape "{" "}" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "{" "}" (fromString <$> M.some pText)
         pure (Rhombus, NodeLabel content),
       do
-        content <- someShape "(" ")" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "(" ")" (fromString <$> M.some pText)
         pure (Round, NodeLabel content),
       do
-        content <- someShape "[" "]" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "[" "]" (fromString <$> M.some pText)
         pure (Default, NodeLabel content)
     ]
 
@@ -140,7 +140,7 @@ pLink =
         void $ lexeme $ string "-->"
         content <- optional $ do
           void $ lexeme "|"
-          lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+          lexeme (fromString <$> M.some pText)
         case content of
           Just x -> do
             void $ choice [string "| ", string "|"]
@@ -150,7 +150,7 @@ pLink =
         void $ lexeme $ string "---"
         content <- optional $ do
           void $ lexeme "|"
-          lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+          lexeme (fromString <$> M.some pText)
         case content of
           Just x -> do
             void $ choice [string "| ", string "|"]
@@ -164,7 +164,7 @@ pLink =
         pure $ Edge (Just "--x") Nothing,
       do
         void $ lexeme "--"
-        content <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- lexeme (fromString <$> M.some pText)
         void $ string "--"
         extraDash <- optional $ lexeme $ string "-"
         case extraDash of
@@ -178,7 +178,7 @@ pLink =
         pure $ Edge (Just "==>") Nothing,
       do
         void $ lexeme "=="
-        content <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- lexeme (fromString <$> M.some pText)
         void $ lexeme "==>"
         pure $ Edge (Just "== ==>") $ Just (EdgeLabel content),
       do
@@ -192,7 +192,7 @@ pLink =
         pure $ Edge (Just "<-->") Nothing,
       do
         void $ lexeme "-."
-        content <- optional $ lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- optional $ lexeme (fromString <$> M.some pText)
         case content of
           Just _ -> do
             void $ lexeme ".->"

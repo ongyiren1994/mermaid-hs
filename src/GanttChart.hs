@@ -7,7 +7,7 @@ module GanttChart where
 import Control.Lens.TH (makeLenses)
 import Parser
 import Text.Megaparsec as M
-import Text.Megaparsec.Char (alphaNumChar, char, string)
+import Text.Megaparsec.Char (char, string)
 
 data GanttChartGraph = GanttChartGraph
   { _ganttChartTitle :: GanttChartTitle,
@@ -71,17 +71,17 @@ instance IsString Task where
 pGanttChartTitle :: Parser GanttChartTitle
 pGanttChartTitle = do
   void $ lexeme $ string "title"
-  lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
+  lexeme (fromString <$> M.some (pText <|> char ':'))
 
 pDateFormat :: Parser DateFormat
 pDateFormat = do
   void $ lexeme $ string "dateFormat"
-  lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
+  lexeme (fromString <$> M.some (pText <|> char ':'))
 
 pAxisFormat :: Parser AxisFormat
 pAxisFormat = do
   void $ lexeme $ string "axisFormat"
-  lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
+  lexeme (fromString <$> M.some (pText <|> char ':'))
 
 pSections :: Pos -> Parser [Section]
 pSections ref = M.many $ pSection ref
@@ -102,14 +102,14 @@ pTasks ref = M.many $
 pSectionTitle :: Parser SectionTitle
 pSectionTitle = do
   void $ lexeme $ string "section"
-  lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%'))
+  lexeme (fromString <$> M.some (pText <|> char ':'))
 
 pTask :: Parser Task
 pTask = do
-  taskName <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char '%'))
+  taskName <- lexeme (fromString <$> (M.some pText))
   void $ lexeme $ string ":"
   taskState <- lexeme $ optional pTaskState
-  void $ lexeme $ M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char ':' <|> char '%')
+  void $ lexeme $ M.some (pText <|> char ':')
   return $ Task taskName taskState
 
 pTaskState :: Parser TaskState

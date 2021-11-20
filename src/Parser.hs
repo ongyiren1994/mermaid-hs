@@ -2,7 +2,7 @@ module Parser where
 
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec as M
-import Text.Megaparsec.Char (char, space1)
+import Text.Megaparsec.Char (alphaNumChar, char, space1)
 import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = Parsec Void Text
@@ -32,3 +32,6 @@ symbol = L.symbol sc
 
 pCheckIndent :: Pos -> Parser Pos
 pCheckIndent = L.indentGuard sc EQ
+
+pText :: Parser Char
+pText = alphaNumChar <|> char ' ' <|> char '?' <|> char '!' <|> char '\'' <|> char ',' <|> char '%'
