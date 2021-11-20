@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module FlowChart where
@@ -36,13 +37,13 @@ data Node = Node
 
 data Shape = Default | Rhombus | Round | Stadium | Subroutine | Cylindrical | Circle | Asymmetric | Hexagon | Parallelogram | ParallelogramAlt | Trapezoid | TrapezoidAlt deriving (Eq, Show, Ord, Generic)
 
-newtype NodeLabel = NodeLabel {_unNodeLabel :: Text} deriving (Eq, Show, Ord, Generic)
+newtype NodeLabel = NodeLabel {_unNodeLabel :: Text} deriving (Eq, Show, Ord, Generic, IsString)
 
-newtype NodeId = NodeId {_unNodeId :: Text} deriving (Eq, Show, Ord, Generic)
+newtype NodeId = NodeId {_unNodeId :: Text} deriving (Eq, Show, Ord, Generic, IsString)
 
-newtype EdgeLabel = EdgeLabel {_unEdgeLabel :: Text} deriving (Eq, Show, Generic)
+newtype EdgeLabel = EdgeLabel {_unEdgeLabel :: Text} deriving (Eq, Show, Generic, IsString)
 
-newtype EdgeStyle = EdgeStyle {_unEdgeStyle :: Text} deriving (Eq, Show, Generic)
+newtype EdgeStyle = EdgeStyle {_unEdgeStyle :: Text} deriving (Eq, Show, Generic, IsString)
 
 makeLenses ''Orientation
 
@@ -59,9 +60,6 @@ makeLenses ''NodeId
 makeLenses ''EdgeLabel
 
 makeLenses ''EdgeStyle
-
-instance IsString NodeId where
-  fromString s = NodeId (fromString s)
 
 instance IsString Node where
   fromString s = Node (fromString s) Nothing Nothing
