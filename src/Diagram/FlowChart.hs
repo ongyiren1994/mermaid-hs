@@ -214,23 +214,18 @@ pNode = do
   let (shape, label') = spiltJust maybeShapeLabel
   return $ Node nodeId' shape label'
 
-pMultiNodeInit :: Parser [Node]
-pMultiNodeInit = do
-  node <- pNode
-  pMultiNode [node]
+pExtraNode :: Parser Node
+pExtraNode = lexeme "&" >> pNode
 
-pMultiNode :: [Node] -> Parser [Node]
-pMultiNode nodes = do
-  maybeMultiNode <- optional $ lexeme "&"
-  case maybeMultiNode of
-    Nothing -> return nodes
-    Just _ -> do
-      node <- pNode
-      pMultiNode $ (++) nodes [node]
+pNodes :: Parser [Node]
+pNodes = do
+  node <- pNode
+  extraNodes <- M.many pExtraNode
+  return $ node : extraNodes
 
 pSubFlowChartGraphInit :: Parser [SubFlowChartGraph]
 pSubFlowChartGraphInit = do
-  nodes <- pMultiNodeInit
+  nodes <- pNodes
   let isolatedNodes = vertices nodes
   pSubFlowChartGraph [isolatedNodes]
 
@@ -240,7 +235,7 @@ pSubFlowChartGraph graphs = do
   case link of
     Nothing -> return graphs
     Just link' -> do
-      nodes <- pMultiNodeInit
+      nodes <- pNodes
       let isolatedNodes = vertices nodes
       case graphs of
         [] -> return graphs
