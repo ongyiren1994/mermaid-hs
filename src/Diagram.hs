@@ -5,41 +5,39 @@ module Diagram where
 
 import Algebra.Graph.Labelled as LG
 import Control.Lens.TH (makeLenses)
-import FlowChart
+import Diagram.FlowChart
+import Diagram.GanttChart
 import Parser
-import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char (string)
 import qualified Text.Megaparsec.Char.Lexer as L
 
-data Diagram
-  = FlowChart
-      { _orientation :: Orientation,
-        _graph :: FlowChartGraph
-      }
-  | Others
+data Diagram = D_FlowChart FlowChartGraph | D_GanttChart GanttChartGraph
   deriving (Eq, Show, Generic)
 
 makeLenses ''Diagram
 
-data DiagramType = FlowChartType | OtherType deriving (Eq, Show, Generic)
+pDiagram :: Parser [Diagram]
+pDiagram = many $ fmap D_GanttChart pGanttChartGraph <|> fmap D_FlowChart pFlowChartGraph
 
-makeLenses ''DiagramType
-
-pDiagram :: Parser Diagram
-pDiagram = L.nonIndented sc (L.indentBlock sc p)
+pGanttChartGraph :: Parser GanttChartGraph
+pGanttChartGraph = L.nonIndented sc p
   where
     p = do
-      chart <- pDiagramType
-      case chart of
-        FlowChartType -> do
-          void $ lexeme " "
-          orientation' <- pOrientation
-          return (L.IndentSome Nothing (return . (FlowChart orientation' . overlays . fromList . concat)) pFlowChartGraphInit)
-        OtherType -> return (L.IndentNone Others)
+      void $ lexeme "gantt"
+      ref <- L.indentLevel
+      chartTitle <- pGanttChartTitle
+      void $ pCheckIndent ref
+      dateFormat <- pDateFormat
+      void $ pCheckIndent ref
+      axisFormat <- pAxisFormat
+      sections <- pSections ref
+      return $ GanttChartGraph chartTitle dateFormat axisFormat sections
 
-pDiagramType :: Parser DiagramType
-pDiagramType =
-  choice
-    [ FlowChartType <$ string "flowchart",
-      OtherType <$ string "PLACEHOLDER"
-    ]
+pFlowChartGraph :: Parser FlowChartGraph
+pFlowChartGraph = L.nonIndented sc (L.indentBlock sc p)
+  where
+    p = do
+      void $ string "flowchart"
+      void $ lexeme " "
+      orientation' <- pOrientation
+      return (L.IndentSome Nothing (return . (FlowChartGraph orientation' . overlays . fromList . concat)) pSubFlowChartGraphInit)

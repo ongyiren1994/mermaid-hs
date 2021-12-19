@@ -1,20 +1,25 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module FlowChart where
+module Diagram.FlowChart where
 
 import Algebra.Graph.Labelled as LG
 import Control.Lens.TH (makeLenses)
 import Parser
 import System.Directory.Internal.Prelude ()
-import Text.Megaparsec hiding (State)
 import Text.Megaparsec as M
-import Text.Megaparsec.Char (alphaNumChar, char, space1, string)
-import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Megaparsec.Char (alphaNumChar, char, string)
 
 data Orientation = TB | TD | BT | RL | LR deriving (Eq, Show, Generic)
 
-type FlowChartGraph = Graph (Maybe Edge) Node
+data FlowChartGraph = FlowChartGraph
+  { _flowChartOrientation :: Orientation,
+    _flowChartGraph :: SubFlowChartGraph
+  }
+  deriving (Eq, Show, Generic)
+
+type SubFlowChartGraph = Graph (Maybe Edge) Node
 
 data Edge = Edge
   { _edgeStyle :: Maybe Text,
@@ -37,13 +42,13 @@ data Node = Node
 
 data Shape = Default | Rhombus | Round | Stadium | Subroutine | Cylindrical | Circle | Asymmetric | Hexagon | Parallelogram | ParallelogramAlt | Trapezoid | TrapezoidAlt deriving (Eq, Show, Ord, Generic)
 
-newtype NodeLabel = NodeLabel {_unNodeLabel :: Text} deriving (Eq, Show, Ord, Generic)
+newtype NodeLabel = NodeLabel {_unNodeLabel :: Text} deriving (Eq, Show, Ord, Generic, IsString)
 
-newtype NodeId = NodeId {_unNodeId :: Text} deriving (Eq, Show, Ord, Generic)
+newtype NodeId = NodeId {_unNodeId :: Text} deriving (Eq, Show, Ord, Generic, IsString)
 
-newtype EdgeLabel = EdgeLabel {_unEdgeLabel :: Text} deriving (Eq, Show, Generic)
+newtype EdgeLabel = EdgeLabel {_unEdgeLabel :: Text} deriving (Eq, Show, Generic, IsString)
 
-newtype EdgeStyle = EdgeStyle {_unEdgeStyle :: Text} deriving (Eq, Show, Generic)
+newtype EdgeStyle = EdgeStyle {_unEdgeStyle :: Text} deriving (Eq, Show, Generic, IsString)
 
 makeLenses ''Orientation
 
@@ -61,27 +66,11 @@ makeLenses ''EdgeLabel
 
 makeLenses ''EdgeStyle
 
-instance IsString NodeId where
-  fromString s = NodeId (fromString s)
-
 instance IsString Node where
   fromString s = Node (fromString s) Nothing Nothing
 
 instance IsString Edge where
   fromString s = Edge (Just (fromString s)) Nothing
-
-sc :: Parser ()
-sc =
-  L.space
-    space1
-    (L.skipLineComment "//")
-    M.empty
-
-lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
-
-symbol :: Text -> Parser Text
-symbol = L.symbol sc
 
 someShape :: Text -> Text -> Parser a -> Parser a
 someShape open close = between (symbol open) (symbol close)
@@ -103,49 +92,49 @@ pShape :: Parser (Shape, NodeLabel)
 pShape =
   choice
     [ do
-        content <- someShape "([" "])" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "([" "])" (fromString <$> M.some pText)
         pure (Stadium, NodeLabel content),
       do
-        content <- someShape "[[" "]]" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "[[" "]]" (fromString <$> M.some pText)
         pure (Subroutine, NodeLabel content),
       do
-        content <- someShape "((" "))" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "((" "))" (fromString <$> M.some pText)
         pure (Cylindrical, NodeLabel content),
       do
-        content <- someShape "[(" ")]" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "[(" ")]" (fromString <$> M.some pText)
         pure (Circle, NodeLabel content),
       do
-        content <- someShape ">" "]" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape ">" "]" (fromString <$> M.some pText)
         pure (Asymmetric, NodeLabel content),
       do
-        content <- someShape "{{" "}}" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "{{" "}}" (fromString <$> M.some pText)
         pure (Hexagon, NodeLabel content),
       do
-        void $ lexeme $ "[/"
-        content <- fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!')
-        closeShapeA <- optional $ lexeme $ "/]"
+        void $ lexeme "[/"
+        content <- fromString <$> M.some pText
+        closeShapeA <- optional $ lexeme "/]"
         case closeShapeA of
           Just _ -> pure (Parallelogram, NodeLabel content)
           Nothing -> do
             void $ lexeme "\\]"
             pure (Trapezoid, NodeLabel content),
       do
-        void $ lexeme $ "[\\"
-        content <- fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!')
-        closeShapeA <- optional $ lexeme $ "\\]"
+        void $ lexeme "[\\"
+        content <- fromString <$> M.some pText
+        closeShapeA <- optional $ lexeme "\\]"
         case closeShapeA of
           Just _ -> pure (ParallelogramAlt, NodeLabel content)
           Nothing -> do
             void $ lexeme "/]"
             pure (TrapezoidAlt, NodeLabel content),
       do
-        content <- someShape "{" "}" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "{" "}" (fromString <$> M.some pText)
         pure (Rhombus, NodeLabel content),
       do
-        content <- someShape "(" ")" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "(" ")" (fromString <$> M.some pText)
         pure (Round, NodeLabel content),
       do
-        content <- someShape "[" "]" (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- someShape "[" "]" (fromString <$> M.some pText)
         pure (Default, NodeLabel content)
     ]
 
@@ -156,7 +145,7 @@ pLink =
         void $ lexeme $ string "-->"
         content <- optional $ do
           void $ lexeme "|"
-          lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+          lexeme (fromString <$> M.some pText)
         case content of
           Just x -> do
             void $ choice [string "| ", string "|"]
@@ -166,7 +155,7 @@ pLink =
         void $ lexeme $ string "---"
         content <- optional $ do
           void $ lexeme "|"
-          lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+          lexeme (fromString <$> M.some pText)
         case content of
           Just x -> do
             void $ choice [string "| ", string "|"]
@@ -180,7 +169,7 @@ pLink =
         pure $ Edge (Just "--x") Nothing,
       do
         void $ lexeme "--"
-        content <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- lexeme (fromString <$> M.some pText)
         void $ string "--"
         extraDash <- optional $ lexeme $ string "-"
         case extraDash of
@@ -194,7 +183,7 @@ pLink =
         pure $ Edge (Just "==>") Nothing,
       do
         void $ lexeme "=="
-        content <- lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- lexeme (fromString <$> M.some pText)
         void $ lexeme "==>"
         pure $ Edge (Just "== ==>") $ Just (EdgeLabel content),
       do
@@ -208,7 +197,7 @@ pLink =
         pure $ Edge (Just "<-->") Nothing,
       do
         void $ lexeme "-."
-        content <- optional $ lexeme (fromString <$> M.some (alphaNumChar <|> char ' ' <|> char '?' <|> char '!'))
+        content <- optional $ lexeme (fromString <$> M.some pText)
         case content of
           Just _ -> do
             void $ lexeme ".->"
@@ -225,37 +214,32 @@ pNode = do
   let (shape, label') = spiltJust maybeShapeLabel
   return $ Node nodeId' shape label'
 
-pMultiNodeInit :: Parser [Node]
-pMultiNodeInit = do
+pExtraNode :: Parser Node
+pExtraNode = lexeme "&" >> pNode
+
+pNodes :: Parser [Node]
+pNodes = do
   node <- pNode
-  pMultiNode [node]
+  extraNodes <- M.many pExtraNode
+  return $ node : extraNodes
 
-pMultiNode :: [Node] -> Parser [Node]
-pMultiNode nodes = do
-  maybeMultiNode <- optional $ lexeme "&"
-  case maybeMultiNode of
-    Nothing -> return nodes
-    Just _ -> do
-      node <- pNode
-      pMultiNode $ (++) nodes [node]
-
-pFlowChartGraphInit :: Parser [FlowChartGraph]
-pFlowChartGraphInit = do
-  nodes <- pMultiNodeInit
+pSubFlowChartGraphInit :: Parser [SubFlowChartGraph]
+pSubFlowChartGraphInit = do
+  nodes <- pNodes
   let isolatedNodes = vertices nodes
-  pFlowChartGraph [isolatedNodes]
+  pSubFlowChartGraph [isolatedNodes]
 
-pFlowChartGraph :: [FlowChartGraph] -> Parser [FlowChartGraph]
-pFlowChartGraph graphs = do
+pSubFlowChartGraph :: [SubFlowChartGraph] -> Parser [SubFlowChartGraph]
+pSubFlowChartGraph graphs = do
   link <- optional $ lexeme pLink
   case link of
     Nothing -> return graphs
     Just link' -> do
-      nodes <- pMultiNodeInit
+      nodes <- pNodes
       let isolatedNodes = vertices nodes
       case graphs of
         [] -> return graphs
-        lastGraph : xs -> pFlowChartGraph $ isolatedNodes : connect (Just link') lastGraph isolatedNodes : xs
+        lastGraph : xs -> pSubFlowChartGraph $ isolatedNodes : connect (Just link') lastGraph isolatedNodes : xs
 
 spiltJust :: Maybe (a, b) -> (Maybe a, Maybe b)
 spiltJust (Just (a, b)) = (Just a, Just b)

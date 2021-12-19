@@ -3,11 +3,10 @@
 module Main where
 
 import Diagram
-import FlowChart
 import Main.Utf8 (withUtf8)
 import Options.Applicative as O
 import qualified Shower
-import Text.Megaparsec
+import Text.Megaparsec as M
 
 opt :: O.Parser FilePath
 opt =
