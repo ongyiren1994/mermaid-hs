@@ -60,7 +60,7 @@ spec = do
                 start --> stop
             |]
       parseMaybe pFlowChartGraph flowChartGraph
-        `shouldHaveEdges` [("-->", "start", "stop")]
+        `shouldHaveEdges` [(Edge EdgeB Nothing, "start", "stop")]
     it "nodes of single edge with two times two isolated nodes" $ do
       let flowChartGraph =
             [text|
@@ -80,8 +80,8 @@ spec = do
                 A & B--> C & D
             |]
       parseMaybe pFlowChartGraph flowChartGraph
-        `shouldHaveEdges` [ ("-->", "A", "C"),
-                            ("-->", "A", "D"),
-                            ("-->", "B", "C"),
-                            ("-->", "B", "D")
+        `shouldHaveEdges` [ (Edge EdgeB Nothing, "A", "C"),
+                            (Edge EdgeB Nothing, "A", "D"),
+                            (Edge EdgeB Nothing, "B", "C"),
+                            (Edge EdgeB Nothing, "B", "D")
                           ]
