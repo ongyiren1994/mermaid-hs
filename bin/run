@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 set -xe
-nix-shell --pure --run "ghcid --warnings -c 'cabal new-repl exe:mermaid-hs --flags=ghcid' -T \":main -f text/fixtures/test-file\""
+
+exec nix develop -c ghcid -c 'cabal repl exe:mermaid-hs --flags=ghcid'  -T ":main -f text/fixtures/test-file"

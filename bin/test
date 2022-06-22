@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 set -xe
-nix-shell --pure --run "ghcid $* -c 'cabal new-repl test:mermaid-hs-test --flags=ghcid' -T \":main $*\""
+
+exec nix develop -c ghcid -c "cabal repl test:mermaid-hs-test --flags=ghcid" -T ":main $*"
