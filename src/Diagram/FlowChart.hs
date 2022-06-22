@@ -22,13 +22,30 @@ data FlowChartGraph = FlowChartGraph
 type SubFlowChartGraph = Graph (Maybe Edge) Node
 
 data Edge = Edge
-  { _edgeStyle :: Maybe Text,
+  { _edgeStyle :: EdgeStyle,
     _edgeLabel :: Maybe EdgeLabel
   }
   deriving (Eq, Show, Generic)
 
+data EdgeStyle
+  = EdgeA -- "--> ||"
+  | EdgeB -- "-->"
+  | EdgeC -- "--- ||"
+  | EdgeD -- "---"
+  | EdgeE -- "--o"
+  | EdgeF -- "--x"
+  | EdgeG -- "-- ---"
+  | EdgeH -- "-- --"
+  | EdgeI -- "==>"
+  | EdgeJ -- "== ==>"
+  | EdgeK -- "o--o"
+  | EdgeL -- "x--x"
+  | EdgeM -- "<-->"
+  | EdgeN -- "-.->"
+  deriving (Eq, Show, Generic)
+
 instance Semigroup Edge where
-  (<>) (Edge a b) (Edge c d) = Edge (a <> c) (b <> d)
+  (<>) (Edge _ b) (Edge _ d) = Edge EdgeA (b <> d)
 
 instance Semigroup EdgeLabel where
   (<>) (EdgeLabel a) (EdgeLabel b) = EdgeLabel (a <> b)
@@ -48,8 +65,6 @@ newtype NodeId = NodeId {_unNodeId :: Text} deriving (Eq, Show, Ord, Generic, Is
 
 newtype EdgeLabel = EdgeLabel {_unEdgeLabel :: Text} deriving (Eq, Show, Generic, IsString)
 
-newtype EdgeStyle = EdgeStyle {_unEdgeStyle :: Text} deriving (Eq, Show, Generic, IsString)
-
 makeLenses ''Orientation
 
 makeLenses ''Edge
@@ -68,9 +83,6 @@ makeLenses ''EdgeStyle
 
 instance IsString Node where
   fromString s = Node (fromString s) Nothing Nothing
-
-instance IsString Edge where
-  fromString s = Edge (Just (fromString s)) Nothing
 
 someShape :: Text -> Text -> Parser a -> Parser a
 someShape open close = between (symbol open) (symbol close)
@@ -149,8 +161,8 @@ pLink =
         case content of
           Just x -> do
             void $ choice [string "| ", string "|"]
-            pure $ Edge (Just "--> ||") (Just (EdgeLabel x))
-          Nothing -> pure $ Edge (Just "-->") Nothing,
+            pure $ Edge EdgeA (Just (EdgeLabel x))
+          Nothing -> pure $ Edge EdgeB Nothing,
       do
         void $ lexeme $ string "---"
         content <- optional $ do
@@ -159,14 +171,14 @@ pLink =
         case content of
           Just x -> do
             void $ choice [string "| ", string "|"]
-            pure $ Edge (Just "--- ||") (Just (EdgeLabel x))
-          Nothing -> pure $ Edge (Just "---") Nothing,
+            pure $ Edge EdgeC (Just (EdgeLabel x))
+          Nothing -> pure $ Edge EdgeD Nothing,
       do
         void $ lexeme "--o"
-        pure $ Edge (Just "--o") Nothing,
+        pure $ Edge EdgeE Nothing,
       do
         void $ lexeme "--x"
-        pure $ Edge (Just "--x") Nothing,
+        pure $ Edge EdgeF Nothing,
       do
         void $ lexeme "--"
         content <- lexeme (fromString <$> M.some pText)
@@ -174,37 +186,37 @@ pLink =
         extraDash <- optional $ lexeme $ string "-"
         case extraDash of
           Just _ -> do
-            pure $ Edge (Just "-- ---") $ Just (EdgeLabel content)
+            pure $ Edge EdgeG $ Just (EdgeLabel content)
           Nothing -> do
             void $ lexeme $ string ">"
-            pure $ Edge (Just "-- --") $ Just (EdgeLabel content),
+            pure $ Edge EdgeH $ Just (EdgeLabel content),
       do
         void $ lexeme "==>"
-        pure $ Edge (Just "==>") Nothing,
+        pure $ Edge EdgeI Nothing,
       do
         void $ lexeme "=="
         content <- lexeme (fromString <$> M.some pText)
         void $ lexeme "==>"
-        pure $ Edge (Just "== ==>") $ Just (EdgeLabel content),
+        pure $ Edge EdgeJ $ Just (EdgeLabel content),
       do
         void $ lexeme "o--o"
-        pure $ Edge (Just "o--o") Nothing,
+        pure $ Edge EdgeK Nothing,
       do
         void $ lexeme "x--x"
-        pure $ Edge (Just "x--x") Nothing,
+        pure $ Edge EdgeL Nothing,
       do
         void $ lexeme "<-->"
-        pure $ Edge (Just "<-->") Nothing,
+        pure $ Edge EdgeM Nothing,
       do
         void $ lexeme "-."
         content <- optional $ lexeme (fromString <$> M.some pText)
         case content of
           Just _ -> do
             void $ lexeme ".->"
-            pure $ Edge (Just "-.->") (EdgeLabel <$> content)
+            pure $ Edge EdgeN (EdgeLabel <$> content)
           Nothing -> do
             void $ lexeme "->"
-            pure $ Edge (Just "-.->") (EdgeLabel <$> content)
+            pure $ Edge EdgeN (EdgeLabel <$> content)
     ]
 
 pNode :: Parser Node

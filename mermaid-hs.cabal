@@ -47,6 +47,7 @@ common library-common
     , mtl
     , neat-interpolation
     , optparse-applicative
+    , prettyprinter
     , profunctors
     , relude
     , shower
