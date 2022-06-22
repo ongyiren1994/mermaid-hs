@@ -23,15 +23,15 @@
             };
             modifier = drv:
               pkgs.haskell.lib.addBuildTools drv (with pkgs.haskellPackages; pkgs.lib.lists.optionals returnShellEnv
-              [
-                # Specify your build/dev dependencies here. 
-                cabal-fmt
-                cabal-install
-                ghcid
-                haskell-language-server
-                ormolu
-                pkgs.nixpkgs-fmt
-              ]);
+                [
+                  # Specify your build/dev dependencies here. 
+                  cabal-fmt
+                  cabal-install
+                  ghcid
+                  haskell-language-server
+                  ormolu
+                  pkgs.nixpkgs-fmt
+                ]);
           };
       in
       rec {
